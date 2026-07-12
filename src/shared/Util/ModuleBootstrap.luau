@@ -15,11 +15,17 @@ export type BootstrapOptions = {
 	context: any,
 }
 
-local initializedKeys: { [string]: boolean } = {}
+type BootstrapState = "Initializing" | "Initialized"
+type ResolvedModule = {
+	instance: ModuleScript,
+	module: BootstrapModule,
+}
+
+local bootstrapStates: { [string]: BootstrapState } = {}
 
 local ModuleBootstrap = {}
 
-local function getModules(root: Instance): { { instance: ModuleScript, module: BootstrapModule } }
+local function getModules(root: Instance): ({ ResolvedModule }?, string?)
 	local resolvedModules = {}
 	local children = root:GetChildren()
 
@@ -31,47 +37,101 @@ local function getModules(root: Instance): { { instance: ModuleScript, module: B
 		if child:IsA("ModuleScript") then
 			local ok, loadedModule = pcall(require, child)
 			if not ok then
-				Logger.warn("Failed to require %s: %s", child:GetFullName(), tostring(loadedModule))
-			elseif type(loadedModule) == "table" then
-				table.insert(resolvedModules, {
-					instance = child,
-					module = loadedModule :: BootstrapModule,
-				})
-			else
-				Logger.warn("Ignoring %s because it did not return a table", child:GetFullName())
+				local message = string.format("Failed to require %s: %s", child:GetFullName(), tostring(loadedModule))
+				Logger.warn(message)
+				return nil, message
 			end
+
+			if type(loadedModule) ~= "table" then
+				local message = string.format("Bootstrap module %s must return a table", child:GetFullName())
+				Logger.warn(message)
+				return nil, message
+			end
+
+			table.insert(resolvedModules, {
+				instance = child,
+				module = loadedModule :: BootstrapModule,
+			})
 		end
 	end
 
-	return resolvedModules
+	return resolvedModules, nil
+end
+
+local function cleanupModule(definition: ResolvedModule, context: any)
+	local stop = definition.module.Stop or definition.module.Destroy or definition.module.Cleanup
+	if stop ~= nil then
+		local ok, err = pcall(stop, context)
+		if not ok then
+			Logger.warn("Cleanup failed for %s: %s", definition.instance:GetFullName(), tostring(err))
+		end
+	end
 end
 
 function ModuleBootstrap.run(options: BootstrapOptions)
 	local janitor = Janitor.new()
+	local key = options.key
 
-	if initializedKeys[options.key] then
-		Logger.warn("Skipped duplicate bootstrap for %s", options.key)
-		return janitor
+	if type(key) ~= "string" or key == "" then
+		local message = "Skipping bootstrap because the key is invalid"
+		Logger.warn(message)
+		return nil, message
 	end
-
-	initializedKeys[options.key] = true
-	janitor:Add(function()
-		initializedKeys[options.key] = nil
-	end)
 
 	if options.root == nil then
-		Logger.warn("Skipping bootstrap for %s because the root instance is missing", options.key)
-		return janitor
+		local message = string.format("Skipping bootstrap for %s because the root instance is missing", key)
+		Logger.warn(message)
+		return nil, message
 	end
 
-	local modules = getModules(options.root)
+	local existingState = bootstrapStates[key]
+	if existingState ~= nil then
+		local message = string.format("Skipped duplicate bootstrap for %s because it is already %s", key, existingState)
+		Logger.warn(message)
+		return nil, message
+	end
+
+	bootstrapStates[key] = "Initializing"
+	janitor:Add(function()
+		bootstrapStates[key] = nil
+	end)
+
+	local activeModules = {}
+	local activeModuleLookup: { [ModuleScript]: boolean } = {}
+
+	local function activate(definition: ResolvedModule)
+		if activeModuleLookup[definition.instance] then
+			return
+		end
+
+		activeModuleLookup[definition.instance] = true
+		table.insert(activeModules, definition)
+	end
+
+	janitor:Add(function()
+		for index = #activeModules, 1, -1 do
+			cleanupModule(activeModules[index], options.context)
+		end
+	end)
+
+	local modules, modulesError = getModules(options.root)
+	if modules == nil then
+		janitor:Cleanup()
+		return nil, modulesError
+	end
 
 	for _, definition in modules do
 		local init = definition.module.Init
 		if init ~= nil then
+			activate(definition)
+
 			local ok, err = pcall(init, options.context)
 			if not ok then
-				Logger.warn("Init failed for %s: %s", definition.instance:GetFullName(), tostring(err))
+				local message =
+					string.format("Init failed for %s: %s", definition.instance:GetFullName(), tostring(err))
+				Logger.warn(message)
+				janitor:Cleanup()
+				return nil, message
 			end
 		end
 	end
@@ -79,27 +139,22 @@ function ModuleBootstrap.run(options: BootstrapOptions)
 	for _, definition in modules do
 		local start = definition.module.Start
 		if start ~= nil then
+			activate(definition)
+
 			local ok, err = pcall(start, options.context)
 			if not ok then
-				Logger.warn("Start failed for %s: %s", definition.instance:GetFullName(), tostring(err))
+				local message =
+					string.format("Start failed for %s: %s", definition.instance:GetFullName(), tostring(err))
+				Logger.warn(message)
+				janitor:Cleanup()
+				return nil, message
 			end
 		end
 	end
 
-	janitor:Add(function()
-		for index = #modules, 1, -1 do
-			local definition = modules[index]
-			local stop = definition.module.Stop or definition.module.Destroy or definition.module.Cleanup
-			if stop ~= nil then
-				local ok, err = pcall(stop, options.context)
-				if not ok then
-					Logger.warn("Cleanup failed for %s: %s", definition.instance:GetFullName(), tostring(err))
-				end
-			end
-		end
-	end)
+	bootstrapStates[key] = "Initialized"
 
-	return janitor
+	return janitor, nil
 end
 
 return table.freeze(ModuleBootstrap)

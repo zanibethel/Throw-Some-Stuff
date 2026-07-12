@@ -6,9 +6,40 @@
 - **Manual Roblox Studio testing:** playtests, local server sessions, replication checks, UX checks, and exploit-resistance checks.
 
 ## Automated validation run for this task
-- `python -m json.tool default.project.json`
-- `python -m tomllib` parse for `aftman.toml`, `stylua.toml`, and `selene.toml`
+- JSON syntax:
+
+  ```sh
+  python - <<'PY'
+import json
+from pathlib import Path
+
+for path in sorted(Path(".").glob("*.json")):
+    with path.open("r", encoding="utf-8") as handle:
+        json.load(handle)
+    print(f"validated JSON: {path}")
+  PY
+  ```
+
+- TOML syntax:
+
+  ```sh
+  python - <<'PY'
+import tomllib
+from pathlib import Path
+
+for path in (Path("aftman.toml"), Path("stylua.toml"), Path("selene.toml")):
+    with path.open("rb") as handle:
+        tomllib.load(handle)
+    print(f"validated TOML: {path}")
+  PY
+  ```
+
+- `stylua --check src`
+- `selene src`
+- `rojo build default.project.json --output /tmp/ThrowSomeStuff.rbxlx`
 - `git diff --check`
+
+Repository automation can only validate repository-visible files and CLI checks. It does not replace Roblox Studio playtests, replication checks, or device/input verification.
 
 ## Manual Roblox Studio test checklists
 
