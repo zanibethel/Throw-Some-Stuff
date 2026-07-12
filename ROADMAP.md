@@ -8,7 +8,7 @@ _Status values: Not started, In progress, Complete. Only mark work Complete afte
 - **Dependencies:** None.
 - **Acceptance criteria:** Repository structure exists, bootstraps guard against duplicate initialization, lifecycle cleanup pattern is present, and runtime state can initialize without hard crashes when expected instances are missing.
 - **Manual Studio tests:** Start a play session, confirm server and client bootstraps run once, confirm `ReplicatedStorage.GameRuntime` attributes populate, and confirm stopping the session does not leave duplicate connections on restart.
-- **Status:** In progress — repository foundation added; Roblox Studio verification pending.
+- **Status:** In progress — repository foundation added, post-merge lifecycle repair completed, repository automation added, and Roblox Studio verification is still pending.
 
 ## 2. Interaction framework
 - **Goal:** Create a reusable interaction layer for prompts, validation, and contextual actions.

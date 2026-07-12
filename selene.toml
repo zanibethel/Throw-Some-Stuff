@@ -1,2 +1,2 @@
-std = "roblox"
+std = "selene-roblox-lite"
 lints = { unused_variable = "allow" }

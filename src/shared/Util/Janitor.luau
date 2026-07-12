@@ -1,11 +1,20 @@
 local Janitor = {}
 Janitor.__index = Janitor
 
-export type CleanupTask = RBXScriptConnection | Instance | (() -> ()) | { Destroy: (any) -> () } | { Cleanup: (any) -> () } | { Disconnect: (any) -> () }
-export type Janitor = typeof(setmetatable({} :: {
-	_tasks: { CleanupTask },
-	_cleaned: boolean,
-}, Janitor))
+export type CleanupTask =
+	RBXScriptConnection
+	| Instance
+	| (() -> ())
+	| { Destroy: (any) -> () }
+	| { Cleanup: (any) -> () }
+	| { Disconnect: (any) -> () }
+export type Janitor = typeof(setmetatable(
+	{} :: {
+		_tasks: { CleanupTask },
+		_cleaned: boolean,
+	},
+	Janitor
+))
 
 local function cleanupTask(task: CleanupTask)
 	local taskType = typeof(task)
@@ -53,7 +62,12 @@ function Janitor.Cleanup(self: Janitor)
 	self._cleaned = true
 
 	for index = #self._tasks, 1, -1 do
-		cleanupTask(self._tasks[index])
+		local task = self._tasks[index]
+		local ok, err = pcall(cleanupTask, task)
+		if not ok then
+			warn(string.format("[ThrowSomeStuff] Janitor cleanup failed: %s", tostring(err)))
+		end
+
 		self._tasks[index] = nil :: any
 	end
 end

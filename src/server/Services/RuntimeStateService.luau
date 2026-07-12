@@ -6,6 +6,7 @@ local service = {
 }
 
 local initialized = false
+local started = false
 local serviceJanitor = nil
 local runtimeFolder = nil
 
@@ -44,9 +45,13 @@ function service.Init(context)
 end
 
 function service.Start(context)
-	if serviceJanitor == nil or runtimeFolder == nil then
-		context.Logger.warn("%s cannot start because runtime state is unavailable", service.Name)
+	if started then
+		context.Logger.warn("%s already started", service.Name)
 		return
+	end
+
+	if serviceJanitor == nil or runtimeFolder == nil then
+		error(string.format("%s cannot start because runtime state is unavailable", service.Name))
 	end
 
 	serviceJanitor:Add(Players.PlayerAdded:Connect(refreshPlayerCount))
@@ -54,6 +59,7 @@ function service.Start(context)
 
 	refreshPlayerCount()
 	runtimeFolder:SetAttribute("Phase", "RoomReady")
+	started = true
 	context.Logger.info("%s started", service.Name)
 end
 
@@ -67,6 +73,7 @@ function service.Stop(context)
 		serviceJanitor = nil
 	end
 
+	started = false
 	runtimeFolder = nil
 	initialized = false
 	context.Logger.info("%s stopped", service.Name)
