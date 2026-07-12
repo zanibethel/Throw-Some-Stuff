@@ -8,7 +8,7 @@
 ## Existing systems
 - **Godot artifact:** `/project.godot` exists and was left untouched because it is unrelated to the requested Roblox foundation.
 - **Roblox systems before the foundation PR:** None verified.
-- **Roblox systems now present:** minimal Rojo mapping, shared config/types/utilities, server bootstrap, client bootstrap, and a runtime state service/controller skeleton.
+- **Roblox systems now present:** minimal Rojo mapping, shared config/types/utilities, server bootstrap, client bootstrap, runtime state service/controller skeleton, and interaction framework.
 - **Post-merge repair status:** bootstrap lifecycle failure handling was repaired after the initial foundation merge so failed startup no longer leaves server/client/module guards locked.
 
 ## Current workflow
@@ -24,11 +24,14 @@
 - Bootstrap scripts and `ModuleBootstrap` now distinguish in-progress startup from successful startup and clean partial work on failure.
 - Runtime bootstrapping fails safely when required shared modules or folders are missing, and failed startup does not permanently block a later controlled retry.
 - GitHub Actions validates repository-visible JSON/TOML syntax, formatting, linting, and Rojo buildability.
+- `InteractionService` validates every client request server-side: argument types, rate limit, character presence, distance, registry lookup, action match, and optional custom validation before dispatching.
+- `InteractionController` uses CollectionService tagging to attach ProximityPrompts declaratively; instance cleanup is janitor-scoped per interactable.
+- `Remotes` module provides a typed accessor shared by server and client; server creates remotes on `setup()`, client waits with a timeout.
 
 ## Missing foundation
-- No implemented interaction system.
-- No remotes, secure networking contracts, or remote validation layer yet.
-- No searchable objects, inventory, keys, doors, puzzles, entities, hiding, flashlight, stun, UI, audio, or save data.
+- No implemented searchable-object system yet.
+- No remotes beyond the interaction request/state-changed pair yet.
+- No inventory, keys, doors, puzzles, entities, hiding, flashlight, stun, UI, audio, or save data.
 - No Roblox Studio place file or in-Studio scene verification in this repository.
 - No automated test framework such as TestEZ yet.
 
@@ -51,8 +54,8 @@
 - No repository test suite or CLI type checker is present yet, so automated validation currently focuses on syntax, formatting, linting, and Rojo project buildability.
 
 ## Recommended next milestone
-- **Next milestone:** 2. Interaction framework.
-- Reason: the foundation has completed a post-merge lifecycle repair, and the next gameplay milestone is still the secure interaction framework for searchable props, doors, hiding, and puzzles.
+- **Next milestone:** 3. Searchable-object system.
+- Reason: the interaction framework is now in place; the next gameplay step is to make containers and props searchable using it.
 
 ## Assumptions
 - The requested Roblox game foundation should coexist with unrelated repository files unless explicitly told to remove them.

@@ -11,6 +11,7 @@ local GameConfig = {
 	Interaction = {
 		MaxDistance = 12,
 		PromptHoldDurationSeconds = 0.15,
+		RateLimitSeconds = 0.3,
 	},
 	Round = {
 		ResetDelaySeconds = 5,

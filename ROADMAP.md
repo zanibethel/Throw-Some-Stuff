@@ -16,7 +16,7 @@ _Status values: Not started, In progress, Complete. Only mark work Complete afte
 - **Dependencies:** 1.
 - **Acceptance criteria:** Interactions can be registered declaratively, validated on the server, and rejected safely when state or arguments are invalid.
 - **Manual Studio tests:** Verify one player and two players can interact, cancel, and retry without desync.
-- **Status:** Not started.
+- **Status:** In progress — `InteractionService`, `InteractionController`, and `Remotes` added; repository checks pass; Roblox Studio verification pending.
 
 ## 3. Searchable-object system
 - **Goal:** Make containers and props searchable with configurable outcomes.
