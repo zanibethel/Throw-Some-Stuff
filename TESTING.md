@@ -37,7 +37,14 @@ for path in (Path("aftman.toml"), Path("stylua.toml"), Path("selene.toml")):
 - `stylua --check src`
 - `selene src`
 - `rojo build default.project.json --output /tmp/ThrowSomeStuff.rbxlx`
-- `git diff --check`
+### Interaction framework pure-logic tests
+Run from a server Script or command bar:
+```lua
+local Tests = require(game.ReplicatedStorage.Shared.Tests.InteractionTests)
+local passed, total = Tests.run()
+print(passed .. "/" .. total .. " tests passed")
+```
+Expected: all 18 tests pass.
 
 Repository automation can only validate repository-visible files and CLI checks. It does not replace Roblox Studio playtests, replication checks, or device/input verification.
 
@@ -64,11 +71,93 @@ Repository automation can only validate repository-visible files and CLI checks.
 - Confirm `PlayerCount` updates correctly during join and leave events.
 - Confirm logs remain readable and no runaway loops appear.
 
-### Simultaneous interaction
-- Once the interaction system exists, have multiple players attempt the same interaction at the same time.
+### Interaction framework
+- [ ] Instant interaction — successful completion and cooldown
+- [ ] Hold interaction — successful completion
+- [ ] Hold interaction — player cancels mid-hold
+- [ ] Hold interaction — player moves away mid-hold
+- [ ] Exclusive locking — two simultaneous begins
+- [ ] Death during hold
+- [ ] Disconnect during hold
+- [ ] Replay/stale session rejection
+- [ ] Remote spam / rate limiting
+- [ ] Invalid remote arguments
+- [ ] Room reset API
+- [ ] State change propagation- Have multiple players attempt the same interaction at the same time.
 - Verify only valid outcomes are accepted.
 - Verify server state stays authoritative.
 - Verify no duplicate rewards or state changes occur.
+
+### Instant interaction
+- Walk within range of `DemoButton` and press the ProximityPrompt.
+- Confirm `ReplicatedStorage.DemoInteractionState.ButtonPressCount` increments by exactly 1.
+- Press again immediately and confirm the 2-second cooldown prevents a second increment.
+- After the cooldown expires, confirm a second press increments again.
+- Confirm the prompt re-enables after cooldown.
+
+### Hold interaction — successful completion
+- Walk within range of `DemoLever` and hold the ProximityPrompt for the full 3-second duration.
+- Confirm `ReplicatedStorage.DemoInteractionState.LeverState` toggles between `"on"` and `"off"`.
+- Confirm the 5-second cooldown disables the prompt.
+- Confirm the prompt re-enables after cooldown.
+
+### Hold interaction — player cancels mid-hold
+- Begin holding `DemoLever` and release before 3 seconds elapse.
+- Confirm `LeverState` does not change.
+- Confirm no cooldown is applied (the prompt re-enables immediately).
+- Confirm the server does not retain an active session (server console should show cancel log).
+
+### Hold interaction — player moves away mid-hold
+- Begin holding `DemoLever` then walk beyond max distance before completion.
+- Confirm the hold is cancelled server-side.
+- Confirm `LeverState` does not change.
+
+### Exclusive locking
+- Have two players simultaneously begin holding `DemoLever` (start holds within the same second).
+- Confirm only one player's hold is accepted; the other receives a prompt disable immediately.
+- Confirm only one `LeverState` toggle occurs per round-trip.
+- After the winning hold completes and the cooldown expires, confirm the second player can now interact.
+
+### Death during hold interaction
+- Begin holding a Hold-mode interactable.
+- Kill the character (use `/kill [username]` in the server console) before the hold completes.
+- Confirm the session is cancelled server-side.
+- Confirm `LeverState` does not change.
+- Confirm the exclusive lock is released (another player can begin after respawn).
+
+### Disconnect during hold interaction
+- Begin holding a Hold-mode interactable.
+- Disconnect the client before the hold completes.
+- Confirm the server cancels the session on `Players.PlayerRemoving`.
+- Confirm the exclusive lock is released.
+- Confirm remaining players are unaffected.
+
+### Replay / stale session rejection
+- Complete a Hold interaction and note the session ID in server logs.
+- Attempt to send a `cancel` request with the old session ID via a custom LocalScript.
+- Confirm the server returns `"already_resolved"` or `"session_not_found"` and does not mutate state.
+
+### Remote spam
+- Spam `InteractionRequest:InvokeServer("begin", "demo_hold_lever")` at maximum frequency from a LocalScript.
+- Confirm the rate limiter returns `"rate_limited"` for excess requests.
+- Confirm server performance is unaffected and no duplicate sessions are created.
+
+### Invalid remote arguments
+- Send `InteractionRequest:InvokeServer(nil, nil)`, wrong types (numbers, tables), and unknown operation strings.
+- Confirm each returns `"invalid_args"` and no server error.
+- Confirm no partial state mutation occurs.
+
+### Room reset API
+- Start a Hold interaction on `DemoLever`.
+- From the server console, call `game.ServerScriptService.Server.Services.InteractionService.resetAll("test")`.
+- Confirm the active session is cancelled, the exclusive lock is released, and cooldowns are cleared.
+- Confirm the prompt re-enables without a Studio restart.
+
+### State change propagation
+- Walk toward a `demo_hold_lever` that is currently in cooldown state.
+- Confirm the prompt appears disabled.
+- Wait for cooldown to expire.
+- Confirm the prompt re-enables without any additional client action.
 
 ### Character death
 - Kill a player during play.
@@ -108,13 +197,16 @@ Repository automation can only validate repository-visible files and CLI checks.
 - Confirm repeated actions produce one response, not multiple stacked responses.
 
 ### Invalid remote arguments
-- Once remotes exist, send malformed, nil, extra, wrong-type, and out-of-range arguments.
-- Confirm the server rejects them safely.
-- Confirm rejected requests do not mutate gameplay state.
+- Send `InteractionRequest:InvokeServer(nil, nil)`, wrong types (numbers, tables), and unknown operation strings.
+- Confirm each returns `"invalid_args"` and no server error.
+- Confirm no partial state mutation occurs.
+- Once other remotes exist, also send malformed, extra, and out-of-range arguments to each.
 
 ### Remote spam
-- Once remotes exist, spam high-frequency valid and invalid requests.
-- Confirm rate limits or safe guards prevent server overload and duplicate effects.
+- Spam `InteractionRequest:InvokeServer("begin", "demo_hold_lever")` at maximum frequency from a LocalScript.
+- Confirm the rate limiter returns `"rate_limited"` for excess requests.
+- Confirm server performance is unaffected and no duplicate sessions are created.
+- Once remotes exist for other systems, verify those are also rate-guarded.
 
 ### Attempts to fake inventory, keys, doors, rewards, or progression
 - Once those systems exist, use the client console or exploit simulation tools to fake ownership or completion.
@@ -155,7 +247,18 @@ Repository automation can only validate repository-visible files and CLI checks.
 - [ ] Solo play
 - [ ] Two-player local server
 - [ ] Six-player local server
-- [ ] Simultaneous interaction
+- [ ] Interaction framework: instant completion and cooldown
+- [ ] Interaction framework: hold completion
+- [ ] Interaction framework: cancel mid-hold
+- [ ] Interaction framework: move away mid-hold
+- [ ] Interaction framework: exclusive locking
+- [ ] Interaction framework: death during hold
+- [ ] Interaction framework: disconnect during hold
+- [ ] Interaction framework: replay/stale session rejection
+- [ ] Interaction framework: remote spam / rate limiting
+- [ ] Interaction framework: invalid remote arguments
+- [ ] Interaction framework: room reset API
+- [ ] Interaction framework: state change propagation
 - [ ] Character death
 - [ ] Respawn
 - [ ] Player disconnection

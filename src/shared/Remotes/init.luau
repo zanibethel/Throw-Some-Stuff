@@ -2,6 +2,24 @@
 -- Shared accessor for interaction RemoteFunction and RemoteEvent instances.
 -- Server must call Remotes.setup() once during Init to create the instances.
 -- Clients call Remotes.get(name) which waits up to WAIT_TIMEOUT seconds.
+--
+-- Remote protocol
+-- ---------------
+-- InteractionRequest  (RemoteFunction)
+--   Client → Server:  InvokeServer(operation, interactableId, sessionId?)
+--     operation    : "instant" | "begin" | "cancel"
+--     interactableId: string
+--     sessionId    : string? (required only for "cancel")
+--   Server → Client:  returns (success: boolean, code: string, sessionId: string?)
+--     success   : whether the operation was accepted
+--     code      : InteractionResultCode (non-sensitive)
+--     sessionId : opaque server-generated ID returned on successful "begin"
+--
+-- InteractionStateChanged  (RemoteEvent)
+--   Server → Client:  FireClient(interactableId, state)
+--     interactableId: string
+--     state         : "available" | "locked" | "cooldown" | "disabled"
+--   Used to enable/disable client prompts without polling.
 
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

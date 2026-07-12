@@ -14,9 +14,9 @@ _Status values: Not started, In progress, Complete. Only mark work Complete afte
 - **Goal:** Create a reusable interaction layer for prompts, validation, and contextual actions.
 - **Deliverable:** Shared interaction contracts, server validation layer, and client prompts for interactable objects.
 - **Dependencies:** 1.
-- **Acceptance criteria:** Interactions can be registered declaratively, validated on the server, and rejected safely when state or arguments are invalid.
-- **Manual Studio tests:** Verify one player and two players can interact, cancel, and retry without desync.
-- **Status:** In progress — `InteractionService`, `InteractionController`, and `Remotes` added; repository checks pass; Roblox Studio verification pending.
+- **Acceptance criteria:** Server-created session IDs, server-owned hold duration, cancellable hold interactions, replay rejection, race-safe exclusive locking, shared mode, enabled-state validation, Humanoid health validation, per-target cooldowns, death/reset/disconnect cleanup, target-removal cleanup, room/round reset API, handler errors safely contained, demonstration interaction, interaction documentation, TESTING.md includes interaction manual scenarios.
+- **Manual Studio tests:** Verify one player and two players can interact, cancel, and retry without desync. Test exclusive locking with simultaneous begins. Verify death/disconnect cleanup. Test the reset API. See TESTING.md Interaction Framework section for full checklist.
+- **Status:** In progress — full session lifecycle, Hold/Instant modes, exclusive/shared locking, demo interactions, pure-logic test suite, and documentation added; repository checks pass; Roblox Studio verification pending.
 
 ## 3. Searchable-object system
 - **Goal:** Make containers and props searchable with configurable outcomes.

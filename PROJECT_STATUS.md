@@ -8,7 +8,7 @@
 ## Existing systems
 - **Godot artifact:** `/project.godot` exists and was left untouched because it is unrelated to the requested Roblox foundation.
 - **Roblox systems before the foundation PR:** None verified.
-- **Roblox systems now present:** minimal Rojo mapping, shared config/types/utilities, server bootstrap, client bootstrap, runtime state service/controller skeleton, and interaction framework.
+- **Roblox systems now present:** minimal Rojo mapping, shared config/types/utilities, server bootstrap, client bootstrap, runtime state service/controller skeleton, and a full server-authoritative interaction framework (Hold/Instant modes, exclusive/shared locking, session lifecycle, rate limiting, cooldowns, reset API, demo interactions, pure-logic test suite).
 - **Post-merge repair status:** bootstrap lifecycle failure handling was repaired after the initial foundation merge so failed startup no longer leaves server/client/module guards locked.
 
 ## Current workflow
@@ -24,16 +24,18 @@
 - Bootstrap scripts and `ModuleBootstrap` now distinguish in-progress startup from successful startup and clean partial work on failure.
 - Runtime bootstrapping fails safely when required shared modules or folders are missing, and failed startup does not permanently block a later controlled retry.
 - GitHub Actions validates repository-visible JSON/TOML syntax, formatting, linting, and Rojo buildability.
-- `InteractionService` validates every client request server-side: argument types, rate limit, character presence, distance, registry lookup, action match, and optional custom validation before dispatching.
-- `InteractionController` uses CollectionService tagging to attach ProximityPrompts declaratively; instance cleanup is janitor-scoped per interactable.
-- `Remotes` module provides a typed accessor shared by server and client; server creates remotes on `setup()`, client waits with a timeout.
+- `InteractionService` implements a full server-authoritative session lifecycle: server-generated session IDs, Hold mode with Heartbeat-driven completion, Instant mode, exclusive and shared locking, 18-point validation pipeline, per-player rate limiting, per-target cooldowns, session expiry, safe pcall-wrapped extension points, and public reset API (`cancelPlayerInteractions`, `cancelTargetInteractions`, `resetAll`, `resetDefinitions`).
+- `InteractionController` manages ProximityPrompt creation and operation dispatch; handles race-safe hold cancellation, attribute-change reactivity, and character-death cleanup.
+- `DemoInteractions` registers two demo interactables (`demo_instant_button`, `demo_hold_lever`) demonstrating Instant+shared and Hold+exclusive behaviors.
+- `InteractionTests` provides 18 pure-logic tests covering session ID uniqueness, exclusive locking, cooldowns, expiry, replay rejection, ownership, session limits, rate limiting, and concurrent cancellation.
+- `docs/INTERACTION_FRAMEWORK.md` documents architecture, client/server sequence diagrams, session lifecycle, definition schema, interaction modes, security model, rate limits, handler interface, cancellation/reset behavior, Studio setup, and known limitations.
 
 ## Missing foundation
 - No implemented searchable-object system yet.
 - No remotes beyond the interaction request/state-changed pair yet.
 - No inventory, keys, doors, puzzles, entities, hiding, flashlight, stun, UI, audio, or save data.
+- No automated test framework such as TestEZ yet; `InteractionTests` is a standalone pure-logic module.
 - No Roblox Studio place file or in-Studio scene verification in this repository.
-- No automated test framework such as TestEZ yet.
 
 ## Risks
 - The repository started from a non-Roblox state, so Studio-side integration still needs validation.

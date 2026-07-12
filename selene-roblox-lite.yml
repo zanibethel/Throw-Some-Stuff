@@ -44,6 +44,8 @@ globals:
     property: read-only
   script.Parent.Parent.Config.GameConfig:
     property: read-only
+  script.Parent.InteractionService:
+    property: read-only
   Instance.new:
     args:
       - type: string
