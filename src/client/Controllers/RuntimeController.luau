@@ -6,6 +6,7 @@ local controller = {
 }
 
 local initialized = false
+local started = false
 local controllerJanitor = nil
 
 function controller.Init(context)
@@ -22,15 +23,19 @@ function controller.Init(context)
 end
 
 function controller.Start(context)
-	if controllerJanitor == nil then
-		context.Logger.warn("%s cannot start because its janitor is missing", controller.Name)
+	if started then
+		context.Logger.warn("%s already started", controller.Name)
 		return
 	end
 
-	local runtimeFolder = ReplicatedStorage:FindFirstChild("GameRuntime") or ReplicatedStorage:WaitForChild("GameRuntime", 5)
+	if controllerJanitor == nil then
+		error(string.format("%s cannot start because its janitor is missing", controller.Name))
+	end
+
+	local runtimeFolder = ReplicatedStorage:FindFirstChild("GameRuntime")
+		or ReplicatedStorage:WaitForChild("GameRuntime", 5)
 	if runtimeFolder == nil then
-		context.Logger.warn("%s could not find ReplicatedStorage.GameRuntime", controller.Name)
-		return
+		error(string.format("%s could not find ReplicatedStorage.GameRuntime", controller.Name))
 	end
 
 	controllerJanitor:Add(runtimeFolder:GetAttributeChangedSignal("Phase"):Connect(function()
@@ -47,6 +52,7 @@ function controller.Start(context)
 		end))
 	end
 
+	started = true
 	context.Logger.info("%s started", controller.Name)
 end
 
@@ -56,6 +62,7 @@ function controller.Stop(context)
 		controllerJanitor = nil
 	end
 
+	started = false
 	initialized = false
 	context.Logger.info("%s stopped", controller.Name)
 end
